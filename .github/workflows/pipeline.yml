@@ -1,0 +1,52 @@
+# Pipeline basico de CI/CD con 5 etapas: checkout, build, test, package, deploy
+name: Pipeline basico
+
+on:
+  push:
+    branches: [main, feature-eduardo]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      # Etapa 1. Checkout: descarga el codigo exacto del commit
+      - name: 1. Checkout
+        uses: actions/checkout@v4
+
+      # Etapa 2. Build: prepara el entorno e instala dependencias
+      - name: 2. Build - preparar entorno
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 2. Build - instalar dependencias
+        run: pip install pytest
+
+      # Etapa 3. Test: verifica que el contenido minimo exista
+      - name: 3. Test
+        run: |
+          test -f README.md && echo "README.md encontrado"
+          test -f notas.md && echo "notas.md encontrado"
+          grep -q "Objetivo" README.md && echo "README tiene seccion Objetivo"
+
+      # Etapa 4. Package: empaqueta los archivos con numero de version
+      - name: 4. Package
+        run: |
+          mkdir -p dist
+          zip -r dist/practica-v${{ github.run_number }}.zip README.md notas.md
+          ls -l dist
+      - name: 4. Package - guardar artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: paquete
+          path: dist/
+
+      # Etapa 5. Deploy: despliegue simulado (staging en ramas, produccion en main)
+      - name: 5. Deploy
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "Desplegando version ${{ github.run_number }} a PRODUCCION (simulado)"
+          else
+            echo "Desplegando version ${{ github.run_number }} a STAGING (simulado)"
+          fi
